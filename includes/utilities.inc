@@ -113,6 +113,20 @@ function islandora_entities_create_citation_tab(AbstractObject $object) {
   }
 }
 
+function islandora_entities_create_citation_tab_test(AbstractObject $object) {
+  module_load_include('inc', 'islandora_entities', 'includes/utilities');
+  if ($object['MADS']) {
+    $mads = $object['MADS']->content;
+    $simplexml = simplexml_load_string($mads);
+    $identifiers = $simplexml->identifier;
+    foreach ($identifiers as $identifier) {
+      if ($identifier['type'] == 'test') {
+        return islandora_entities_get_related((string) $identifier, (string) $simplexml->authority->titleInfo->title, 'citations');
+      }
+    }
+  }
+}
+
 /**
  * Gets all citations related to scholars's unique identifier.
  *
@@ -123,6 +137,12 @@ function islandora_entities_create_citation_tab(AbstractObject $object) {
  *   Array of links pointing to citations
  */
 function islandora_entities_get_related($identifier, $title, $type) {
+  $recent_result_limit = variable_get(
+    'recent_result_limit', '20'
+  ); 
+  $person_query_field = variable_get(
+    'person_query_field', '+mods_valueURI_mt:'
+  );
   $base_query = array(
     'citations' => variable_get(
       'islandora_entities_citation_base_query',
@@ -131,7 +151,7 @@ function islandora_entities_get_related($identifier, $title, $type) {
       'islandora_entities_thesis_base_query',
       '+RELS_EXT_hasModel_uri_mt:"ir:thesisCModel"'),
   );
-  $query = "+mods_name_personal_displayForm_mt:\"($identifier)\"  {$base_query[$type]}";
+  $query = "$person_query_field\"($identifier)\"  {$base_query[$type]}";
   $params = array(
     'fl' => 'dc.title, PID',
   );
@@ -140,7 +160,7 @@ function islandora_entities_get_related($identifier, $title, $type) {
   $solr = new Apache_Solr_Service($url['host'], $url['port'], $url['path'] . '/');
   $solr->setCreateDocuments(FALSE);
   try {
-    $results = $solr->search($query, 0, 20, $params);
+    $results = $solr->search($query, 0, $recent_result_limit, $params);
     $json = json_decode($results->getRawResponse(), TRUE);
   }
   catch (Exception $e) {
@@ -174,13 +194,17 @@ function islandora_entities_get_related($identifier, $title, $type) {
  *   themed list of citations
  */
 function islandora_entities_create_theses_tab(AbstractObject $object) {
+
+  $identifier_type = variable_get(
+    'identifier_type', 'u1'
+  ); 
   module_load_include('inc', 'islandora_entities', 'includes/utilities');
   if ($object['MADS']) {
     $mads = $object['MADS']->content;
     $simplexml = simplexml_load_string($mads);
     $identifiers = $simplexml->identifier;
     foreach ($identifiers as $identifier) {
-      if ($identifier['type'] == 'u1') {
+      if ($identifier['type'] == $identifier_type) {
         return islandora_entities_get_related((string) $identifier, (string) $simplexml->authority->titleInfo->title, 'theses');
       }
     }
@@ -197,6 +221,13 @@ function islandora_entities_create_theses_tab(AbstractObject $object) {
  *   Array of links pointing to citations
  */
 function islandora_entities_get_related_pids($identifier, $title, $type) {
+  
+  $recent_result_limit = variable_get(
+    'recent_result_limit', '20'
+  ); 
+  $person_query_field = variable_get(
+    'person_query_field', '+mods_valueURI_mt:'
+  );
   $base_query = array(
     'citations' => variable_get(
       'islandora_entities_citation_base_query',
@@ -205,17 +236,17 @@ function islandora_entities_get_related_pids($identifier, $title, $type) {
       'islandora_entities_thesis_base_query',
       '+RELS_EXT_hasModel_uri_mt:"ir:thesisCModel"'),
   );
-  $query = "+mods_name_personal_displayForm_mt:\"($identifier)\"  {$base_query[$type]}";
+  $query = "$person_query_field\"($identifier)\"  {$base_query[$type]}";
 
   $params = array(
-    'fl' => 'dc.title, mods_name_personal_displayForm_mt, PID',
+    'fl' => 'dc.title, mods_name_author_mt, PID',
   );
 
   $url = parse_url(variable_get('islandora_solr_url', 'localhost:8080/solr'));
   $solr = new Apache_Solr_Service($url['host'], $url['port'], $url['path'] . '/');
   $solr->setCreateDocuments(FALSE);
   try {
-    $search_results = $solr->search($query, 0, 20, $params);
+    $search_results = $solr->search($query, 0, $recent_result_limit, $params);
     $json = json_decode($search_results->getRawResponse(), TRUE);
   }
   catch (Exception $e) {
@@ -226,7 +257,7 @@ function islandora_entities_get_related_pids($identifier, $title, $type) {
     $results[$choice['PID']] = array(
       'PID' => $choice['PID'],
       'title' => $choice['dc.title'],
-      'authors' => $choice['mods_name_personal_displayForm_mt'],
+      'authors' => $choice['mods_name_author_mt'],
     );
   }
   return $results;

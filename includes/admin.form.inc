@@ -27,6 +27,37 @@ function islandora_entities_settings($form, &$form_state) {
     '#description' => t('Solr Field for entity searching.'),
     '#required' => TRUE,
   );
+  
+  $form['identifier_type'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Person identifier type.'),
+    '#default_value' => variable_get(
+      'identifier_type',
+      'u1'
+    ),
+    '#description' => t('Solr Field for entity searching.'),
+    '#required' => TRUE,
+  );
+  
+   $form['islandora_entities_value_field'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Person searching Solr field.'),
+    '#default_value' => variable_get(
+      'person_query_field',
+      'mods_valueURI_mt'),
+    '#description' => t('Solr base field value for Person identifier.'),
+    '#required' => TRUE,
+  );
+  
+    $form['recent_result_limit'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Limit the number of recent citations to display.'),
+    '#default_value' => variable_get(
+      'recent_result_limit',
+      '20'),
+    '#description' => t('Limit the number of citations to display.'),
+    '#required' => TRUE,
+  );
 
   $form['islandora_entities_citation_base_query'] = array(
     '#type' => 'textarea',
