@@ -60,13 +60,28 @@ function islandora_entities_citation_form($form, $form_state, $object, $type = '
           }
         }
         $authors = implode('; ', $output);
-        $lines[$object->id] = array('title' => $label, 'authors' => $authors);
+		
+		$output = array();
+        foreach ($data['series'] as $s) {
+          $s = preg_replace('/\((.*?)\)/', '', $s);
+
+          if (trim($s)) {
+            $output[] = $s;
+          }
+        }
+        $series = implode('; ', $output);
+		
+		$output = array();
+		
+        $lines[$object->id] = array('title' => $label, 'authors' => $authors, 'series' => $series);
       }
     }
   }
   $header = array(
     'title' => t('Title'),
     'authors' => t('Authors'),
+	'series' => t('Series'),
+	'date' => t('Date'),
   );
   $form['#tree'] = TRUE;
   $form['type'] = array(

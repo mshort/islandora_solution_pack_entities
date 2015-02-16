@@ -138,7 +138,7 @@ function islandora_entities_create_citation_tab_test(AbstractObject $object) {
  */
 function islandora_entities_get_related($identifier, $title, $type) {
   $recent_result_limit = variable_get(
-    'recent_result_limit', '20'
+    'recent_result_limit', '15'
   ); 
   $person_query_field = variable_get(
     'person_query_field', '+mods_valueURI_mt:'
@@ -175,7 +175,7 @@ function islandora_entities_get_related($identifier, $title, $type) {
   if (count($links) > 0) {
     $list_variables = array(
       'items' => $links,
-      'title' => t('Recent @type for @scholar', array('@type' => drupal_ucfirst($type), '@scholar' => $title)),
+      'title' => t('Recent titles by @scholar', array('@type' => drupal_ucfirst($type), '@scholar' => $title)),
       'type' => 'ul',
       'attributes' => array('class' => 'recent_citations'),
     );
@@ -222,8 +222,8 @@ function islandora_entities_create_theses_tab(AbstractObject $object) {
  */
 function islandora_entities_get_related_pids($identifier, $title, $type) {
   
-  $recent_result_limit = variable_get(
-    'recent_result_limit', '20'
+  $complete_result_limit = variable_get(
+    'complete_result_limit', '1000'
   ); 
   $person_query_field = variable_get(
     'person_query_field', '+mods_valueURI_mt:'
@@ -239,14 +239,14 @@ function islandora_entities_get_related_pids($identifier, $title, $type) {
   $query = "$person_query_field\"($identifier)\"  {$base_query[$type]}";
 
   $params = array(
-    'fl' => 'dc.title, mods_name_author_mt, PID',
+    'fl' => 'dc.title, mods_name_author_mt, mods_series_statement_proper_mt, mods_dateIssued_mt, PID',
   );
 
   $url = parse_url(variable_get('islandora_solr_url', 'localhost:8080/solr'));
   $solr = new Apache_Solr_Service($url['host'], $url['port'], $url['path'] . '/');
   $solr->setCreateDocuments(FALSE);
   try {
-    $search_results = $solr->search($query, 0, $recent_result_limit, $params);
+    $search_results = $solr->search($query, 0, $complete_result_limit, $params);
     $json = json_decode($search_results->getRawResponse(), TRUE);
   }
   catch (Exception $e) {
@@ -258,6 +258,8 @@ function islandora_entities_get_related_pids($identifier, $title, $type) {
       'PID' => $choice['PID'],
       'title' => $choice['dc.title'],
       'authors' => $choice['mods_name_author_mt'],
+	  'series' => $choice['mods_series_statement_proper_mt'],
+	  'date' => $choice['mods_dateIssued_mt'],
     );
   }
   return $results;

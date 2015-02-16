@@ -8,7 +8,12 @@
 /**
  * Implements hook_preprocess().
  */
-function islandora_entities_preprocess_islandora_person(array &$variables) {
+
+ function str_startswith($source, $prefix) {
+   return strncmp($source, $prefix, strlen($prefix)) == 0;
+ }
+ 
+ function islandora_entities_preprocess_islandora_person(array &$variables) {
   module_load_include('inc', 'islandora_entities', 'includes/utilities');
   module_load_include('inc', 'islandora', 'includes/metadata');
   module_load_include('inc', 'islandora_entities', 'includes/entities_rss');
@@ -17,17 +22,85 @@ function islandora_entities_preprocess_islandora_person(array &$variables) {
   $biography = "";
   $object = $variables['object'];
   $object_pid = $object->id;
+  
+  if ($object['BIOGRAPHY']) {
+	$html = $object['BIOGRAPHY']->content;
+	$biography = (string) $html;
+    $variables['biography'] = $biography;
+  }
+  
+  $rels = $object->relationships->get();
+  $related = array();
+  
+  foreach ($rels as $key => $rel) {
+    if ($rel['predicate']['namespace'] == "http://d-nb.info/standards/elementset/gnd#") {
+       try {
+         $identity = $object->repository->getObject($rel['object']['value']);
+       } catch (Exception $e) {
+         continue;
+       }
+       if ($identity) {
+         $related[] = $identity;
+       } 
+    }
+  	if ($rel['predicate']['namespace'] == "http://schema.org/") {
+       $sameAs = $rel['object']['value'];
+	   if (str_startswith($sameAs, "http://dbpedia.org/resource")) {
+			$wkp = $sameAs;
+	   }
+	   if (str_startswith($sameAs, "http://dimenovels.org")) {
+			$leblanc = $sameAs;
+	   }
+	   if (str_startswith($sameAs, "http://viaf.org")) {
+			$viaf = $sameAs;
+	   }
+    }
+	if ($rel['predicate']['namespace'] == "http://xmlns.com/foaf/0.1/") {
+		$wiki_page = $rel['object']['value'];
+	}
+  }
+  
+  $variables['related'] = $related;
+  $variables['leblanc'] = $leblanc;
+  $variables['viaf'] = $viaf;
+  $variables['wiki_page'] = $wiki_page;
+  
+  require_once "easyrdf/lib/EasyRdf.php";
+  
+  EasyRdf_Namespace::set('category', 'http://dbpedia.org/resource/Category:');
+  EasyRdf_Namespace::set('dbpedia', 'http://dbpedia.org/resource/');
+  EasyRdf_Namespace::set('dbo', 'http://dbpedia.org/ontology/');
+  EasyRdf_Namespace::set('dbp', 'http://dbpedia.org/property/');
+  
+  $sparql = new EasyRdf_Sparql_Client('http://dbpedia.org/sparql');
+  
+  /* DBPedia seems to go down a lot. Check to make sure we actually have a connection first. **/
+  if ($sparql) {
+	  $wikipedia = $sparql->query(
+			'SELECT ?abstract WHERE {'.
+			'  <'.$wkp.'> dbo:abstract ?abstract .'.
+			'  FILTER ( langMatches(lang(?abstract), "EN") )'.
+			'}'
+		);
+	
+	
+	  foreach ($wikipedia as $row) {
+			$abstract = $row->abstract;
+	  }
+		
+	  $variables['abstract'] = $abstract;
+  }
 
   if ($object['MADS']) {
     $mads = $object['MADS']->content;
     $simplexml = simplexml_load_string($mads);
-    $notes = $simplexml->note;
+/**    $notes = $simplexml->note;
     foreach ($notes as $note) {
       if ($note['type'] == 'history') {
         $biography = (string) $note;
         $variables['biography'] = str_replace("\n", "<br />", $biography);
       }
-    }
+    }*/
     $variables['title'] = (string) $simplexml->authority->titleInfo->title;
     $activities = $simplexml->fieldOfActivity;
     foreach ($activities as $activity) {
@@ -45,29 +118,6 @@ function islandora_entities_preprocess_islandora_person(array &$variables) {
       $variables['activities'] = theme_item_list($list_variables);
     }
     $depts = $simplexml->affiliation->organization;
-    $colleages = array();
-    foreach ($depts as $dept) {
-      if ((string) $dept) {
-        $members = islandora_entities_get_dept_members((string) $dept, $object->id);
-        if ($members) {
-          $colleages[(string) $dept] = $members;
-        }
-      }
-    }
-    if (count($colleages) > 0) {
-      foreach ($colleages as $dept => $members) {
-        foreach ($members as $pid => $scholar) {
-          $links[] = l($scholar, "islandora/object/$pid/view");
-        }
-        $list_variables = array(
-          'items' => $links,
-          'title' => t('Other Scholars in @dept', array('@dept' => $dept)),
-          'type' => 'ul',
-          'attributes' => array('class' => 'fellow_scholars'),
-        );
-        $variables['fellow_scholars'][] = theme_item_list($list_variables);
-      }
-    }
     $identifiers = $simplexml->identifier;
     foreach ($identifiers as $identifier) {
       if ($identifier['type'] == 'u1' && (string) $identifier) {
@@ -96,51 +146,5 @@ function islandora_entities_preprocess_islandora_person(array &$variables) {
   if ($object["TN"]) {
     $variables['tn'] = "/islandora/object/$object_pid/datastream/TN/view";
   }
-  $variables['metadata'] = islandora_retrieve_metadata_markup($object, TRUE);
-}
-
-/**
- * Gets all members of department.
- *
- * @param string $dept
- *   Department being queried
- * @param string $pid
- *   Object pid, results will be excluded
- *
- * @return array
- *   Department members
- */
-function islandora_entities_get_dept_members($dept, $pid) {
-  $params = array(
-    'fl' => array('MADS_title_ms PID'),
-  );
-  $query = "MADS_organization_ms:\"$dept\" AND -PID:\"$pid\"";
-  $url = parse_url(variable_get('islandora_solr_url', 'localhost:8080/solr'));
-  $solr = new Apache_Solr_Service($url['host'], $url['port'], $url['path'] . '/');
-  $solr->setCreateDocuments(FALSE);
-  try {
-    $results = $solr->search($query, 0, 1000, $params);
-    $json = json_decode($results->getRawResponse(), TRUE);
-  }
-  catch (Exception $e) {
-    watchdog_exception('Islandora Entities', $e, 'Got an exception while searching entities for callback.', array(), WATCHDOG_ERROR);
-  }
-  $colleages = array();
-  foreach ($json['response']['docs'] as $choice) {
-    if (isset($choice['MADS_title_ms'])) {
-      foreach ($choice['MADS_title_ms'] as $candidate) {
-        $colleages[$choice['PID']] = $candidate;
-      }
-    }
-  }
-  return $colleages;
-}
-
-/**
- * Implements hook_preprocess().
- */
-function islandora_entities_preprocess_islandora_dept(array &$variables) {
-  module_load_include('inc', 'islandora', 'includes/metadata');
-  $object = $variables['object'];
   $variables['metadata'] = islandora_retrieve_metadata_markup($object, TRUE);
 }

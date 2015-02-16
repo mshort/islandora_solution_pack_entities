@@ -87,8 +87,8 @@ function islandora_entities_menu() {
       'access callback' => 'islandora_entity_update_tn_access',
       'access arguments' => array(2),
     ),
-    'islandora/object/%islandora_object/citations' => array(
-      'title' => 'Citations',
+    'islandora/object/%islandora_object/titles' => array(
+      'title' => 'Titles',
       'type' => MENU_LOCAL_TASK,
       'page callback' => 'drupal_get_form',
       'page arguments' => array(

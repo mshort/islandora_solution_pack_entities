@@ -54,7 +54,17 @@ function islandora_entities_settings($form, &$form_state) {
     '#title' => t('Limit the number of recent citations to display.'),
     '#default_value' => variable_get(
       'recent_result_limit',
-      '20'),
+      '15'),
+    '#description' => t('Limit the number of citations to display.'),
+    '#required' => TRUE,
+  );
+
+    $form['complete_result_limit'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Limit the number of complete citations to display.'),
+    '#default_value' => variable_get(
+      'complete_result_limit',
+      '1000'),
     '#description' => t('Limit the number of citations to display.'),
     '#required' => TRUE,
   );
