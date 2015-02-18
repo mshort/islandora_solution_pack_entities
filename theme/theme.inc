@@ -41,7 +41,7 @@
        }
        if ($identity) {
          $related[] = $identity;
-       } 
+       }
     }
   	if ($rel['predicate']['namespace'] == "http://schema.org/") {
        $sameAs = $rel['object']['value'];
@@ -60,10 +60,18 @@
 	}
   }
   
+  foreach ($rels as $key => $rel) {
+	if ($rel['predicate']['value'] == "preferredNameForThePerson") {
+		$identifier = $rel['object']['value'];
+	}
+  }
+  
   $variables['related'] = $related;
   $variables['leblanc'] = $leblanc;
   $variables['viaf'] = $viaf;
   $variables['wiki_page'] = $wiki_page;
+  $variables['rels'] = $rels;
+  $variables['identifier'] = $identifier;
   
   require_once "easyrdf/lib/EasyRdf.php";
   
@@ -102,28 +110,8 @@
       }
     }*/
     $variables['title'] = (string) $simplexml->authority->titleInfo->title;
-    $activities = $simplexml->fieldOfActivity;
-    foreach ($activities as $activity) {
-      if ((string) $activity) {
-        $fields_of_activity[] = (string) $activity;
-      }
-    }
-    if (isset($fields_of_activity)) {
-      $list_variables = array(
-        'items' => $fields_of_activity,
-        'title' => t('Research Interests'),
-        'type' => 'ul',
-        'attributes' => array('class' => 'research_interests'),
-      );
-      $variables['activities'] = theme_item_list($list_variables);
-    }
-    $depts = $simplexml->affiliation->organization;
-    $identifiers = $simplexml->identifier;
-    foreach ($identifiers as $identifier) {
-      if ($identifier['type'] == 'u1' && (string) $identifier) {
-        $themed_links = islandora_entities_get_related((string) $identifier, $variables['title'], 'citations');
-      }
-    }
+	
+	$themed_links = islandora_entities_get_related($variables['identifier'], $variables['identifier'], 'citations');
     $name = $variables['title'];
     // Add the RSS image, with menu callback.
     $form = array();

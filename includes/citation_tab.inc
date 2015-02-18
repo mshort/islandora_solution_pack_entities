@@ -39,12 +39,14 @@ function islandora_entities_citation_form($form, $form_state, $object, $type = '
   if ($object['MADS']) {
     $mads = $object['MADS']->content;
     $simplexml = simplexml_load_string($mads);
-    $identifiers = $simplexml->identifier;
-    foreach ($identifiers as $identifier) {
-      if ($identifier['type'] == 'u1' && (string) $identifier) {
-        $results = islandora_entities_get_related_pids((string) $identifier, (string) $simplexml->authority->titleInfo->title, $type);
-      }
-    }
+	$rels = $object->relationships->get();
+	foreach ($rels as $key => $rel) {
+	if ($rel['predicate']['value'] == "preferredNameForThePerson") {
+		$identifier = $rel['object']['value'];
+		}
+	}
+	$variables['identifier'] = $identifier;
+    $results = islandora_entities_get_related_pids($variables['identifier'], $variables['identifier'], $type);
     $lines = array();
     $has_entries = empty($results) ? FALSE : TRUE;
     if ($has_entries) {

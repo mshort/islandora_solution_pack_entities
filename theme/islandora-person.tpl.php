@@ -38,7 +38,7 @@
 	<div class="islandora-related-objects islandora">
 	   <div class="islandora-related-content-wrapper clearfix">
 	       <?php if($related): ?>
-	       <h3 class="bio"><?php print t('Related identities in the collection'); ?></h3>
+	       <h3 class="bio"><?php print t('Pseudonyms in this collection:'); ?></h3>
     	   <div>
     	       <ul>
     	       <?php foreach ($related as $obj): ?>

@@ -91,43 +91,6 @@ function islandora_entities_ingest__entity_ds_composite_datastream(AbstractObjec
 }
 
 /**
- * Creates themed list of scholar's citations.
- *
- * @param AbstractObject $object
- *   Object representing scholar
- *
- * @return html
- *   themed list of citations
- */
-function islandora_entities_create_citation_tab(AbstractObject $object) {
-  module_load_include('inc', 'islandora_entities', 'includes/utilities');
-  if ($object['MADS']) {
-    $mads = $object['MADS']->content;
-    $simplexml = simplexml_load_string($mads);
-    $identifiers = $simplexml->identifier;
-    foreach ($identifiers as $identifier) {
-      if ($identifier['type'] == 'u1') {
-        return islandora_entities_get_related((string) $identifier, (string) $simplexml->authority->titleInfo->title, 'citations');
-      }
-    }
-  }
-}
-
-function islandora_entities_create_citation_tab_test(AbstractObject $object) {
-  module_load_include('inc', 'islandora_entities', 'includes/utilities');
-  if ($object['MADS']) {
-    $mads = $object['MADS']->content;
-    $simplexml = simplexml_load_string($mads);
-    $identifiers = $simplexml->identifier;
-    foreach ($identifiers as $identifier) {
-      if ($identifier['type'] == 'test') {
-        return islandora_entities_get_related((string) $identifier, (string) $simplexml->authority->titleInfo->title, 'citations');
-      }
-    }
-  }
-}
-
-/**
  * Gets all citations related to scholars's unique identifier.
  *
  * @param string $identifier
@@ -141,7 +104,7 @@ function islandora_entities_get_related($identifier, $title, $type) {
     'recent_result_limit', '15'
   ); 
   $person_query_field = variable_get(
-    'person_query_field', '+mods_valueURI_mt:'
+    'person_query_field', '+mods_name_author_mt:'
   );
   $base_query = array(
     'citations' => variable_get(
@@ -185,33 +148,6 @@ function islandora_entities_get_related($identifier, $title, $type) {
 }
 
 /**
- * Creates themed list of scholar's citations.
- *
- * @param AbstractObject $object
- *   Object representing scholar
- *
- * @return html
- *   themed list of citations
- */
-function islandora_entities_create_theses_tab(AbstractObject $object) {
-
-  $identifier_type = variable_get(
-    'identifier_type', 'u1'
-  ); 
-  module_load_include('inc', 'islandora_entities', 'includes/utilities');
-  if ($object['MADS']) {
-    $mads = $object['MADS']->content;
-    $simplexml = simplexml_load_string($mads);
-    $identifiers = $simplexml->identifier;
-    foreach ($identifiers as $identifier) {
-      if ($identifier['type'] == $identifier_type) {
-        return islandora_entities_get_related((string) $identifier, (string) $simplexml->authority->titleInfo->title, 'theses');
-      }
-    }
-  }
-}
-
-/**
  * Gets all citations related to scholars's unique identifier.
  *
  * @param string $identifier
@@ -226,7 +162,7 @@ function islandora_entities_get_related_pids($identifier, $title, $type) {
     'complete_result_limit', '1000'
   ); 
   $person_query_field = variable_get(
-    'person_query_field', '+mods_valueURI_mt:'
+    'person_query_field', '+mods_name_author_mt:'
   );
   $base_query = array(
     'citations' => variable_get(
@@ -279,34 +215,6 @@ function islandora_entities_add_autocompletes_to_citation_form(&$form) {
       $form['authors'][$key]['family']['#autocomplete_path'] = 'islandora/entities/autocomplete/last_name';
       $form['authors'][$key]['qualified_name']['#autocomplete_path'] = 'islandora/entities/autocomplete/disambiguated';
       $form['authors'][$key]['affiliation']['#autocomplete_path'] = 'islandora/entities/autocomplete/department';
-    }
-  }
-}
-
-/**
- * Adds entity autocomplete paths to a scholar thesis form.
- *
- * @param array $form
- *   Drupal Form API array.
- */
-function islandora_entities_add_autocompletes_to_thesis_form(&$form) {
-  // Skip the non-numeric keys.
-  // Hack in the autocomplete paths.
-  foreach ($form['advisor'] as $key => $value) {
-    if (is_int($key)) {
-      $form['advisor'][$key]['advisor']['#autocomplete_path'] = 'islandora/entities/autocomplete/disambiguated';
-    }
-  }
-
-  foreach ($form['committee'] as $key => $value) {
-    if (is_int($key)) {
-      $form['committee'][$key]['commitee']['#autocomplete_path'] = 'islandora/entities/autocomplete/disambiguated';
-    }
-  }
-
-  foreach ($form['granter'] as $key => $value) {
-    if (is_int($key)) {
-      $form['granter'][$key]['department']['#autocomplete_path'] = 'islandora/entities/autocomplete/department';
     }
   }
 }
